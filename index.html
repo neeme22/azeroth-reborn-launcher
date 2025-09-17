@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Azeroth Reborn Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#0a1018; --bg2:#0a1220;
+    /* ↓ menos opaco para ver más el fondo */
+    --card: rgba(15,23,36,.70);
+    --border: rgba(39,64,99,.55);
+    --muted:#a6bad6; --accent:#7fd4ff; --accent2:#3aa2f0;
+    --bg-img:url('./assets/azeroth-bg.jpg');
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;font-family:'Outfit',system-ui;color:#e9f1fb;
+       background:radial-gradient(1200px 600px at 70% -20%, rgba(83,183,255,.18), transparent 60%),
+                  linear-gradient(180deg,var(--bg2),var(--bg1));}
+
+  /* ===== Fondo con tu imagen + borde borroso y viñeta ===== */
+  #bg{position:fixed; inset:0; z-index:-3; pointer-events:none;}
+  #bg .layer{position:absolute; inset:0; transform:translateZ(0);}
+  #bg .base{
+    background:var(--bg-img) center 55% / cover no-repeat;
+    filter:saturate(1.05) contrast(1.02);
+  }
+  #bg .edge-blur{
+    background:var(--bg-img) center 55% / cover no-repeat;
+    filter:blur(14px) saturate(1.08);
+    transform:scale(1.04);
+    -webkit-mask-image:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 72%);
+            mask-image:radial-gradient(ellipse at 50% 55%, rgba(0,0,0,0) 50%, rgba(0,0,0,1) 72%);
+  }
+  #bg .vignette{
+    background:
+      radial-gradient(120% 90% at 50% 55%, rgba(0,0,0,0) 40%, rgba(6,12,22,.38) 70%, rgba(3,8,16,.78) 100%),
+      linear-gradient(180deg, rgba(0,0,0,.18), transparent 35%, rgba(0,0,0,.28) 100%);
+  }
+
+  #fx{position:fixed;inset:0;z-index:-2}
+  .wrap{max-width:1020px;margin:0 auto;padding:22px}
+  .top{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+  .sigil{width:84px;height:84px}
+  .title{flex:1}
+  .title h1{margin:0;font-family:'Cinzel',serif;font-weight:800;letter-spacing:1px;
+    background:linear-gradient(180deg,#ecfbff 0%,#bfeeff 35%,#7fd4ff 60%,#3aa2f0 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;position:relative}
+  .title h1:after{content:""; position:absolute; left:0; right:0; bottom:-6px; height:1px;
+    background:linear-gradient(90deg,transparent, rgba(140,205,255,.6), transparent)}
+  .grid{display:grid;grid-template-columns:1.1fr .9fr; gap:16px}
+  .card{
+        background:var(--card);
+        border:1px solid var(--border);
+        border-radius:16px;
+        padding:18px;
+        /* ↑ un poco más “glass” para compensar la transparencia */
+        backdrop-filter:blur(10px) saturate(160%);
+        box-shadow:0 20px 60px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.04)
+  }
+  label{color:var(--muted);font-size:13px}
+  input{width:100%;margin-top:6px;margin-bottom:10px;padding:10px;border-radius:12px;
+        border:1px solid rgba(255,255,255,.08);background:#0d1523;color:#e9f1fb}
+  .row{display:grid;grid-template-columns:1fr auto; gap:8px}
+  button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 14px;border:0;border-radius:12px;font-weight:700;cursor:pointer;color:#081120;
+    background:radial-gradient(120% 120% at 50% -20%, #b3eaff 0%, #79d2ff 28%, #4cb2f2 64%, #2a77c8 100%);
+    box-shadow:0 12px 26px rgba(58,162,240,.45), inset 0 -2px 0 rgba(0,0,0,.25);
+    transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease; }
+  .btn-secondary{background:radial-gradient(120% 120% at 50% -20%,#e9fbff 0%,#c9f0ff 35%,#8fd8ff 70%,#58b7ff 100%)}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  progress{width:100%;height:12px;border-radius:12px;appearance:none}
+  progress::-webkit-progress-bar{background:#0d1523;border-radius:12px}
+  progress::-webkit-progress-value{background:#4cb2f2;border-radius:12px}
+  .mini{font-size:12px;color:#a6bad6}
+  .news{height:240px;overflow:auto;padding-right:6px}
+
+  /* ===== Barra integrada ===== */
+  #titlebar{position:fixed; top:0; left:0; right:0; height:32px; z-index:20; -webkit-app-region: drag; background:transparent;}
+  .win-controls{position:fixed; top:6px; right:8px; display:flex; gap:6px; z-index:21; -webkit-app-region: no-drag;}
+  .win-btn{width:36px; height:22px; display:inline-flex; align-items:center; justify-content:center;
+           border-radius:8px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08);
+           backdrop-filter: blur(6px) saturate(140%); cursor:pointer; user-select:none;
+           transition: transform 120ms ease, filter 120ms ease; }
+  .win-btn:hover{background:rgba(255,255,255,.12)}
+  .win-btn.close:hover{background:rgba(255,80,80,.85); color:#fff}
+  .win-ico{font-size:12px; line-height:1; opacity:.9}
+
+  @keyframes press {
+    0%{transform:translateY(0) scale(1);filter:brightness(1)}
+    50%{transform:translateY(1px) scale(.98);filter:brightness(.96)}
+    100%{transform:translateY(0) scale(1);filter:brightness(1)}
+  }
+  .click-anim{animation:press .14s ease;}
+
+  /* ===== Mejora visual del botón Jugar (sin tocar su lógica) ===== */
+  @keyframes pulseGlow {
+    0% { box-shadow: 0 12px 26px rgba(58,162,240,.45), 0 0 0 rgba(127,212,255,0); }
+    50%{ box-shadow: 0 14px 30px rgba(58,162,240,.55), 0 0 22px rgba(127,212,255,.35); }
+    100%{ box-shadow: 0 12px 26px rgba(58,162,240,.45), 0 0 0 rgba(127,212,255,0); }
+  }
+  #play{
+    height:56px !important; font-size:17px !important; letter-spacing:.3px;
+    animation: pulseGlow 2.4s ease-in-out infinite;
+    position:relative; overflow:hidden;
+  }
+  #play::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: linear-gradient(120deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,0) 60%);
+    mix-blend-mode: overlay; opacity:.4;
+    transform: translateX(-60%); transition: transform .4s ease;
+  }
+  #play:hover::after{ transform: translateX(0%); }
+
+  /* ===== Control de volumen (esquina inferior izquierda) ===== */
+  .music-ctl{
+    position:fixed; left:16px; bottom:16px; z-index:22;
+    display:flex; align-items:center; gap:10px; padding:8px 10px;
+    background:rgba(15,23,36,.55); border:1px solid rgba(39,64,99,.55);
+    border-radius:12px; backdrop-filter:blur(8px) saturate(140%);
+    box-shadow:0 10px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
+    -webkit-app-region: no-drag;
+  }
+  .music-ctl button{
+    width:36px; height:28px; border-radius:10px; border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.06); color:#e9f1fb; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+  }
+  .music-ctl button:hover{ background:rgba(255,255,255,.12); }
+  .music-ctl svg{ display:block; opacity:.9 }
+  .music-ctl input[type="range"]{
+    width:140px; appearance:none; height:6px; border-radius:10px; background:#0d1523; outline:none;
+  }
+  .music-ctl input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%;
+    background:#79d2ff; border:1px solid #2a77c8; box-shadow:0 0 0 2px rgba(58,162,240,.25);
+    cursor:pointer; margin-top:-4px;
+  }
+  .music-ctl input[type="range"]::-webkit-slider-runnable-track{
+    height:6px; border-radius:10px; background:linear-gradient(90deg,#4cb2f2,#2a77c8);
+  }
+</style>
+</head>
+<body>
+
+<!-- 🔥 Fondo -->
+<div id="bg" aria-hidden="true">
+  <div class="layer base"></div>
+  <div class="layer edge-blur"></div>
+  <div class="layer vignette"></div>
+</div>
+
+<canvas id="fx"></canvas>
+
+<!-- Zona invisible para arrastrar la ventana -->
+<div id="titlebar"></div>
+<!-- Botones de ventana -->
+<div class="win-controls">
+  <div class="win-btn" id="btn-min" title="Minimizar"><span class="win-ico">—</span></div>
+  <div class="win-btn" id="btn-max" title="Maximizar"><span class="win-ico" id="ico-max">▢</span></div>
+  <div class="win-btn close" id="btn-close" title="Cerrar"><span class="win-ico">×</span></div>
+</div>
+
+<div class="wrap">
+  <div class="top">
+    <div class="sigil" id="logo"></div>
+    <div class="title">
+      <h1>AZEROTH REBORN • LAUNCHER</h1>
+      <div class="mini">Selecciona tu cliente, escribe el realmlist y <b>¡Jugar!</b></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <label>Carpeta del cliente (3.3.5a)</label>
+      <div class="row">
+        <input id="wowPath" placeholder="Ej: D:\Juegos\WoW 3.3.5a"/>
+        <button id="browse">Buscar…</button>
+      </div>
+
+      <label>Realmlist (host o IP)</label>
+      <input id="realmHost" placeholder="Ej: 26.95.165.30 o tu-dominio.com"/>
+
+      <div class="row">
+        <button id="writeRL">Guardar realmlist</button>
+        <button id="repair" class="btn btn-secondary">Reparar</button>
+      </div>
+
+      <div style="margin-top:10px" class="row">
+        <button id="play" style="height:48px;font-size:16px">▶ Jugar</button>
+        <button id="openSite" class="btn btn-secondary" data-link="http://26.95.165.30/registro/">Registro web</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <div class="mini">Progreso descarga/instalación</div>
+        <progress id="prog" value="0" max="100"></progress>
+        <div id="status" class="mini">Listo.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:6px 0 10px 0">Parches & Cliente</h3>
+      <div class="row">
+        <button id="dlPatches">Descargar/Instalar parches</button>
+        <button id="dlClient" class="btn btn-secondary">Descargar cliente</button>
+      </div>
+      <div class="mini" style="margin-top:10px">
+        • Los parches (.MPQ) se descargan directamente a <b>Data</b> del cliente seleccionado.<br/>
+        • Si el cliente está en <i>Archivos de programa</i>, ejecuta este launcher <b>como administrador</b>.
+      </div>
+
+      <h3 style="margin:14px 0 10px 0">Noticias</h3>
+      <div class="news" id="news">
+        <div>• Bienvenido a <b>Azeroth Reborn</b>. Forja tu leyenda.</div>
+        <div>• ¿Novedades? Publica en tu web y enlázala aquí.</div>
+      </div>
+      <!-- 👉 Botón Discord -->
+      <button id="joinDiscord" class="btn btn-secondary" style="margin-top:10px; width:100%; display:inline-flex; align-items:center; justify-content:center;">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="opacity:.9">
+          <path d="M20.317 4.369a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.249a18.27 18.27 0 0 0-5.471 0 12.26 12.26 0 0 0-.617-1.249.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.68 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.061a.084.084 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.04.079.079 0 0 0 .085-.028c.462-.63.874-1.295 1.226-1.994a.078.078 0 0 0-.043-.107c-.652-.247-1.27-.546-1.862-.894a.078.078 0 0 1-.008-.129c.125-.094.25-.191.37-.289a.076.076 0 0 1 .079-.01c3.926 1.798 8.18 1.798 12.061 0a.076.076 0 0 1 .079.01c.12.098.245.195.37.289a.078.078 0 0 1-.008.129 12.5 12.5 0 0 1-1.862.894.078.078 0 0 0-.043.107c.36.699.772 1.364 1.226 1.994a.078.078 0 0 0 .085.028 19.87 19.87 0 0 0 6.003-3.04.078.078 0 0 0 .031-.057c.5-5.177-.838-9.673-3.548-13.665a.062.062 0 0 0-.033-.028ZM8.02 15.33c-1.183 0-2.157-1.087-2.157-2.42 0-1.333.953-2.42 2.157-2.42s2.176 1.096 2.157 2.42c0 1.333-.953 2.42-2.157 2.42Zm7.974 0c-1.183 0-2.157-1.087-2.157-2.42 0-1.333.953-2.42 2.157-2.42s2.176 1.096 2.157 2.42c0 1.333-.953 2.42-2.157 2.42Z"/>
+        </svg>
+        <span style="margin-left:6px">Unirme al Discord</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 🎵 Música + Control de volumen -->
+<audio id="bgm" src="./assets/music.mp3" preload="auto" loop></audio>
+<div class="music-ctl" id="musicCtl" title="Música del launcher">
+  <button id="volBtn" aria-label="Mute/Unmute" class="win-btn" style="width:36px;height:28px;">
+    <!-- icono inicial (cambia por JS) -->
+    <svg id="volIco" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M3 10v4h4l5 4V6L7 10H3zM16.5 12a3.5 3.5 0 0 1-2.5 3.342V8.658A3.5 3.5 0 0 1 16.5 12z"/>
+    </svg>
+  </button>
+  <input id="volRange" type="range" min="0" max="1" step="0.01" value="0.40" aria-label="Volumen"/>
+</div>
+
+<script type="module">
+document.addEventListener('DOMContentLoaded', init);
+
+function injectLogo(){
+  const svg = `
+  <svg viewBox="0 0 120 120" width="84" height="84" aria-hidden="true">
+    <defs>
+      <linearGradient id="gold" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0"  stop-color="#ffe9a6"/><stop offset=".35" stop-color="#e7c770"/>
+        <stop offset=".7" stop-color="#b9872f"/><stop offset="1" stop-color="#8b6426"/>
+      </linearGradient>
+      <linearGradient id="goldEdge" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#fff3c8"/><stop offset="1" stop-color="#cda85a"/>
+      </linearGradient>
+      <radialGradient id="planet" cx="50%" cy="40%" r="60%">
+        <stop offset="0" stop-color="#bfe1ff"/><stop offset=".45" stop-color="#456895"/><stop offset="1" stop-color="#0e1726"/>
+      </radialGradient>
+      <linearGradient id="shore" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#caa364"/><stop offset="1" stop-color="#7a5627"/>
+      </linearGradient>
+      <linearGradient id="goldLetter" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#fff4c6"/><stop offset=".35" stop-color="#f2cf6b"/>
+        <stop offset=".7" stop-color="#c9962c"/><stop offset="1" stop-color="#915d1d"/>
+      </linearGradient>
+      <linearGradient id="glint" x1="-60" x2="180" y1="0" y2="0" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="transparent"/><stop offset=".48" stop-color="rgba(255,255,255,.8)"/>
+        <stop offset=".52" stop-color="rgba(255,255,255,.95)"/>
+        <stop offset=".56" stop-color="rgba(255,255,255,.8)"/>
+        <stop offset="1" stop-color="transparent"/>
+        <animateTransform attributeName="gradientTransform" type="translate"
+                          from="-120 0" to="120 0" dur="3.8s" repeatCount="indefinite"/>
+      </linearGradient>
+    </defs>
+    <g transform="translate(60,60)" opacity=".95">
+      <rect x="-46" y="-46" width="16" height="16" fill="url(#gold)" transform="rotate(45)"/>
+      <rect x="30" y="-46" width="16" height="16" fill="url(#gold)" transform="rotate(45)"/>
+      <rect x="-46" y="30" width="16" height="16" fill="url(#gold)" transform="rotate(45)"/>
+      <rect x="30" y="30" width="16" height="16" fill="url(#gold)" transform="rotate(45)"/>
+    </g>
+    <circle cx="60" cy="60" r="52" fill="url(#gold)"/>
+    <circle cx="60" cy="60" r="46" fill="none" stroke="url(#goldEdge)" stroke-width="2"/>
+    <circle cx="60" cy="60" r="43" fill="none" stroke="url(#shore)" stroke-width="4" opacity=".9"/>
+    <circle cx="60" cy="60" r="42" fill="url(#planet)"/>
+    <g transform="translate(60,68)">
+      <text x="0" y="0" dy="8" text-anchor="middle" font-family="Cinzel, serif"
+            font-weight="800" font-size="54" fill="rgba(0,0,0,.55)">A</text>
+      <text x="0" y="0" dy="6.5" text-anchor="middle" font-family="Cinzel, serif"
+            font-weight="800" font-size="54" fill="url(#goldLetter)" stroke="#6b4715"
+            stroke-width="1.2" paint-order="stroke">A</text>
+      <text x="0" y="0" dy="6.5" text-anchor="middle" font-family="Cinzel, serif"
+            font-weight="800" font-size="54" fill="url(#glint)">A</text>
+    </g>
+  </svg>`;
+  document.getElementById('logo').innerHTML = svg;
+}
+function idFrom(u){ const m = String(u).match(/\/d\/([a-zA-Z0-9_-]{10,})/); return m ? m[1] : String(u); }
+
+async function init(){
+  injectLogo();
+
+  // FX
+  const c=document.getElementById('fx'), ctx=c.getContext('2d'); let W,H,S=[];
+  function R(){W=c.width=innerWidth;H=c.height=innerHeight} addEventListener('resize',R,{passive:true}); R();
+  function mk(n){S=[];for(let i=0;i<n;i++)S.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.1+.2,a:Math.random()*.6+.15,vx:(Math.random()-.5)*.05,vy:(Math.random()-.5)*.05});}
+  mk(150); (function t(){ctx.clearRect(0,0,W,H);for(const s of S){s.x+=s.vx;s.y+=s.vy;if(s.x<0)s.x=W;if(s.x>W)s.x=0;if(s.y<0)s.y=H;if(s.y>H)s.y=0;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(150,210,255,${s.a})`;ctx.shadowBlur=8;ctx.shadowColor='rgba(120,200,255,.6)';ctx.fill();ctx.shadowBlur=0;s.a+=(Math.random()-.5)*.02;s.a=Math.max(.1,Math.min(.7,s.a));}requestAnimationFrame(t);})();
+
+  await waitFor(()=> window.launcher && window.launcher.loadCfg, 3000);
+
+  // === Controles de ventana ===
+  const btnMin = document.getElementById('btn-min');
+  const btnMax = document.getElementById('btn-max');
+  const btnClose = document.getElementById('btn-close');
+  const icoMax = document.getElementById('ico-max');
+
+  const setMaxIcon = (maxed)=>{ icoMax.textContent = maxed ? '🗗' : '▢'; btnMax.title = maxed ? 'Restaurar' : 'Maximizar'; };
+  setMaxIcon(await window.launcher.win.isMaximized());
+  window.launcher.win.onState(s => setMaxIcon(!!s.maximized));
+
+  btnMin.addEventListener('click', () => window.launcher.win.control('min'));
+  btnMax.addEventListener('click', () => window.launcher.win.control('max'));
+  btnClose.addEventListener('click', () => window.launcher.win.control('close'));
+
+  // Doble click en la barra para maximizar/restaurar
+  document.getElementById('titlebar').addEventListener('dblclick', () => window.launcher.win.control('max'));
+
+  const $ = sel => document.querySelector(sel);
+  const setStatus = t => $('#status').textContent = t;
+  const save = () => window.launcher.saveCfg({ wowPath: $('#wowPath').value, realmHost: $('#realmHost').value.trim(), realmPort: 3724 });
+
+  // ==== Música (cargar vol/mute de config) ====
+  const bgm = document.getElementById('bgm');
+  const volRange = document.getElementById('volRange');
+  const volBtn = document.getElementById('volBtn');
+  const volIco = document.getElementById('volIco');
+
+  function updateVolIcon(v, muted){
+    // v en [0,1]
+    let path;
+    if(muted || v === 0){
+      path = "M16.5 12 21 16.5 19.5 18 15 13.5 10 17H6v-6h4l5-4v4.5l4.5-4.5L21 8.5 16.5 13z";
+      // icono "mute" estilizado
+      volIco.setAttribute('viewBox','0 0 24 24');
+      volIco.innerHTML = '<path d="M16.5 12 21 16.5 19.5 18 15 13.5 10 17H6v-6h4l5-4v4.5l4.5-4.5L21 8.5 16.5 13z"/>';
+    }else if(v < 0.34){
+      volIco.innerHTML = '<path d="M3 10v4h4l5 4V6L7 10H3z"/>';
+    }else if(v < 0.67){
+      volIco.innerHTML = '<path d="M3 10v4h4l5 4V6L7 10H3zM16.5 12a3.5 3.5 0 0 1-2.5 3.342V8.658A3.5 3.5 0 0 1 16.5 12z"/>';
+    }else{
+      volIco.innerHTML = '<path d="M3 10v4h4l5 4V6L7 10H3zM16.5 12a3.5 3.5 0 0 1-2.5 3.342V8.658A3.5 3.5 0 0 1 16.5 12z"/><path d="M19 12c0-2.761-2.239-5-5-5v2a3 3 0 0 1 3 3 3 3 0 0 1-3 3v2c2.761 0 5-2.239 5-5z"/>';
+    }
+  }
+  function saveMusic(vol, muted){
+    try{
+      // guardamos sin tocar tu config previa
+      window.launcher.saveCfg({
+        wowPath: $('#wowPath').value,
+        realmHost: $('#realmHost').value.trim(),
+        realmPort: 3724,
+        musicVol: vol,
+        musicMuted: muted ? 1 : 0
+      });
+    }catch{}
+  }
+
+  let cfg = {};
+  try {
+    cfg = await window.launcher.loadCfg();
+  } catch {}
+  const initialVol = (typeof cfg.musicVol === 'number') ? Math.max(0, Math.min(1, cfg.musicVol)) : 0.40;
+  const initialMuted = !!cfg.musicMuted;
+
+  bgm.volume = initialMuted ? 0 : initialVol;
+  volRange.value = initialVol.toFixed(2);
+  updateVolIcon(bgm.volume, initialMuted);
+
+  let muted = initialMuted;
+
+  // autoplay amigable: arrancamos tras el primer click en cualquier botón
+  let musicStarted = false;
+  const bootMusic = ()=> {
+    if (!musicStarted){
+      musicStarted = true;
+      bgm.play().catch(()=>{ /* si falla, arrancará al siguiente click */ });
+    }
+  };
+
+  // control mute
+  volBtn.addEventListener('click', ()=>{
+    muted = !muted;
+    bgm.muted = muted;
+    if(muted) { /* mantenemos value pero volumen efectivo 0 */ }
+    updateVolIcon(parseFloat(volRange.value), muted);
+    saveMusic(parseFloat(volRange.value), muted);
+    bootMusic();
+  });
+
+  // control range
+  volRange.addEventListener('input', ()=>{
+    const v = parseFloat(volRange.value);
+    bgm.volume = Math.max(0, Math.min(1, v));
+    if (bgm.volume > 0 && muted){ muted = false; bgm.muted = false; }
+    updateVolIcon(bgm.volume, muted);
+  });
+  volRange.addEventListener('change', ()=>{
+    saveMusic(parseFloat(volRange.value), muted);
+  });
+
+  // Cualquier interacción con botones arranca la música si no arrancó
+  document.body.addEventListener('click', bootMusic, { once:true });
+
+  // === (fin música) ===
+
+  try {
+    $('#wowPath').value = cfg.wowPath || '';
+    $('#realmHost').value = cfg.realmHost || '127.0.0.1';
+  } catch {}
+
+  $('#browse').addEventListener('click', async ()=>{
+    const p = await window.launcher.selectClient();
+    if(p){ $('#wowPath').value = p; save(); }
+  });
+
+  $('#writeRL').addEventListener('click', async ()=>{
+    save();
+    const ok = await window.launcher.writeRealmlist({wowPath: $('#wowPath').value, host: $('#realmHost').value.trim()});
+    setStatus(ok? 'Realmlist escrito correctamente.' : 'No se pudo escribir el realmlist. Revisa permisos/ruta.');
+  });
+
+  $('#repair').addEventListener('click', async ()=>{
+    const r = await window.launcher.repair($('#wowPath').value);
+    setStatus(`Reparación: wow.exe ${r.okExe?'OK':'NO ENCONTRADO'}, Cache/WDB limpiados.`);
+  });
+
+  // ==== Tus enlaces ====
+  const PATCH_URL  = 'https://drive.google.com/file/d/1S8xmWZedkY8w9GOsHgLAhtjj4u-dA_so/view?usp=drive_link';
+  const CLIENT_URL = 'https://drive.google.com/file/d/1s3vbNpy9GNKVvRvu9SPQVNtuIbYNFlNm/view?usp=drive_link';
+  const PATCH_ID   = idFrom(PATCH_URL);
+  const CLIENT_ID  = idFrom(CLIENT_URL);
+
+  // ====== Versión por nombre: patch-z(x.y.z).mpq ======
+  const PATCH_NAME_REGEX = /^patch-z\((\d+(?:\.\d+){0,3})\)\.mpq$/i;
+  const PATCH_PLAIN = 'patch-z.MPQ';
+
+  function dataDir(base){ return window.launcher.utils.join(base, 'Data'); }
+  function parseVerFromName(name){ const m = PATCH_NAME_REGEX.exec(String(name).trim()); return m ? m[1] : null; }
+  function cmpVer(a,b){ const A=String(a).split('.').map(n=>parseInt(n,10)); const B=String(b).split('.').map(n=>parseInt(n,10));
+    const L=Math.max(A.length,B.length); for(let i=0;i<L;i++){ const x=A[i]||0,y=B[i]||0; if(x>y) return 1; if(x<y) return -1; } return 0; }
+  function findLocalPatchZ(base){
+    const dir = dataDir(base); const files = window.launcher.utils.listDir(dir);
+    let bestFile=null, bestVer=null;
+    for(const f of files){ const v=parseVerFromName(f); if(v){ if(bestVer===null || cmpVer(v,bestVer)>0){ bestVer=v; bestFile=f; } } }
+    if(!bestFile && files.some(f=>f.toLowerCase()===PATCH_PLAIN.toLowerCase())){ bestFile=PATCH_PLAIN; bestVer='0.0.0'; }
+    return {file:bestFile, version:bestVer};
+  }
+  async function remotePatchInfo(){
+    const info = await window.launcher.driveInfo(PATCH_ID);
+    const remoteName = info && info.filename ? info.filename : '';
+    const remoteVer  = parseVerFromName(remoteName);
+    return { remoteName, remoteVer };
+  }
+  function removeAllLocalPatchZ(base){
+    const dir = dataDir(base);
+    for(const f of window.launcher.utils.listDir(dir)){
+      if(PATCH_NAME_REGEX.test(f) || f.toLowerCase()===PATCH_PLAIN.toLowerCase()){
+        window.launcher.utils.remove(window.launcher.utils.join(dir,f));
+      }
+    }
+  }
+  async function ensurePatchZLatestByVersion(base){
+    const {remoteName, remoteVer} = await remotePatchInfo();
+    if(!remoteVer){ setStatus('El archivo remoto debe llamarse patch-z(x.y.z).mpq'); return {ok:false}; }
+    const {file:localFile, version:localVer} = findLocalPatchZ(base);
+    if(localVer && cmpVer(localVer, remoteVer)===0 && localFile === remoteName){
+      return {ok:true, updated:false, required:remoteName};
+    }
+    // actualizar
+    removeAllLocalPatchZ(base);
+    const dir = dataDir(base); window.launcher.utils.ensureDir(dir);
+    const tmp = window.launcher.utils.join(window.launcher.utils.tmpDir(), remoteName);
+    document.querySelector('#prog').value = 0;
+    setStatus(`Descargando ${remoteName}…`);
+    await window.launcher.downloadDrive(PATCH_ID, tmp);
+    window.launcher.utils.moveOrCopy(tmp, window.launcher.utils.join(dir, remoteName));
+    document.querySelector('#prog').value = 100;
+    setStatus('Parche actualizado.');
+    return {ok:true, updated:true, required:remoteName};
+  }
+
+  // ====== Botones ======
+
+  // Descargar/instalar parches
+  document.getElementById('dlPatches').addEventListener('click', async ()=>{
+    try{
+      const base = document.querySelector('#wowPath').value.trim();
+      if(!base){ setStatus('Selecciona primero la carpeta del cliente.'); return; }
+      await ensurePatchZLatestByVersion(base);
+    }catch(err){ setStatus('Error: '+(err.message||err)); }
+  });
+
+  // Descargar cliente -> ABRIR LINK
+  document.getElementById('dlClient').addEventListener('click', ()=>{
+    window.launcher.openLink('https://drive.google.com/file/d/1s3vbNpy9GNKVvRvu9SPQVNtuIbYNFlNm/view');
+  });
+
+  // **Registro web**
+  document.getElementById('openSite').addEventListener('click', ()=>{
+    const btn = document.getElementById('openSite');
+    let url = (btn.getAttribute('data-link') || '').trim();
+    if(!url){
+      const host = document.querySelector('#realmHost').value.trim();
+      url = host ? (/^https?:\/\//i.test(host) ? host : `http://${host}`) : 'https://google.com';
+    }
+    window.launcher.openLink(url);
+  });
+
+  // **Discord**
+  const discordBtn = document.getElementById('joinDiscord');
+  if (discordBtn) {
+    discordBtn.addEventListener('click', ()=>{
+      window.launcher.openLink('https://discord.gg/sMYbKGaM');
+    });
+  }
+
+  // Progreso
+  window.addEventListener('message', (e)=>{
+    if(e.data?.type==='progress'){
+      const {done,total} = e.data;
+      if(total>0){ document.querySelector('#prog').value = Math.round(done*100/total); }
+    }
+  });
+
+  // Jugar
+  document.getElementById('play').addEventListener('click', async ()=>{
+    const base = document.querySelector('#wowPath').value.trim();
+    if (!base) { setStatus('Selecciona primero la carpeta del cliente.'); return; }
+
+    const upv = await ensurePatchZLatestByVersion(base);
+    if (!upv.ok) return;
+
+    save();
+    await window.launcher.writeRealmlist({wowPath: base, host: document.querySelector('#realmHost').value.trim()});
+    try{ await window.launcher.runWow(base); setStatus('Lanzando juego…'); }
+    catch(e){ setStatus('Error: '+e.message); }
+  });
+
+  const initialBase = document.querySelector('#wowPath').value.trim();
+  if (initialBase) { try { await ensurePatchZLatestByVersion(initialBase); } catch {} }
+
+  /* ==================== Click FX ==================== */
+  let __audioCtx = null;
+  function playUIClick(){
+    try{
+      if(!__audioCtx){
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        __audioCtx = new Ctx();
+      }
+      if(__audioCtx.state === 'suspended'){ __audioCtx.resume(); }
+
+      const ctx = __audioCtx;
+      const now = ctx.currentTime;
+
+      const master = ctx.createGain(); master.gain.setValueAtTime(0.25, now); master.connect(ctx.destination);
+
+      const noiseBuf = ctx.createBuffer(1, Math.floor(ctx.sampleRate*0.08), ctx.sampleRate);
+      const ch = noiseBuf.getChannelData(0);
+      for (let i=0;i<ch.length;i++) ch[i] = Math.random()*2-1;
+      const noise = ctx.createBufferSource(); noise.buffer = noiseBuf;
+
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(3000, now); bp.Q.value = 6;
+
+      const gNoise = ctx.createGain();
+      gNoise.gain.setValueAtTime(0.0001, now);
+      gNoise.gain.exponentialRampToValueAtTime(0.22, now + 0.004);
+      gNoise.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+
+      noise.connect(bp); bp.connect(gNoise); gNoise.connect(master);
+
+      const osc = ctx.createOscillator();
+      const gOsc = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(420, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.06);
+
+      gOsc.gain.setValueAtTime(0.0001, now);
+      gOsc.gain.exponentialRampToValueAtTime(0.18, now + 0.006);
+      gOsc.gain.exponentialRampToValueAtTime(0.0001, now + 0.095);
+
+      osc.connect(gOsc); gOsc.connect(master);
+
+      noise.start(now); noise.stop(now + 0.06);
+      osc.start(now);   osc.stop(now + 0.10);
+    }catch(e){}
+  }
+
+  function attachClickFX(el){
+    if(!el) return;
+    el.addEventListener('click', ()=>{
+      el.classList.remove('click-anim'); void el.offsetWidth; el.classList.add('click-anim');
+      setTimeout(()=> el.classList.remove('click-anim'), 180);
+      playUIClick();
+    });
+  }
+  [...document.querySelectorAll('button,.btn,.win-btn')].forEach(attachClickFX);
+}
+
+function waitFor(cond, timeoutMs){
+  return new Promise((res, rej)=>{
+    const t0 = Date.now();
+    const id = setInterval(()=>{
+      if(cond()){ clearInterval(id); res(true); }
+      else if(Date.now()-t0 > timeoutMs){ clearInterval(id); rej(new Error('preload no disponible')); }
+    }, 50);
+  });
+}
+</script>
+</body>
+</html>

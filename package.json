@@ -1,0 +1,59 @@
+{
+  "name": "azeroth-reborn-launcher",
+  "version": "1.0.1",
+  "description": "Launcher de Azeroth Reborn",
+  "main": "main.js",
+  "author": "Azeroth Reborn",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "make:ico": "node make-ico.js"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.6.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.4"
+  },
+  "build": {
+    "appId": "com.azerothreborn.launcher",
+    "productName": "Azeroth Reborn Launcher",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "assets/**/*",
+      "icon.ico",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Azeroth Reborn Launcher"
+    }
+  },
+  "dependencies": {
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2"
+  }
+}
