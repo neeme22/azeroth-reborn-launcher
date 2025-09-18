@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('launcher', {
   runWow: (p) => ipcRenderer.invoke('runWow', p),
   repair: (p) => ipcRenderer.invoke('repair', p),
 
+  // 🔸 AÑADIDO: versión del launcher
+  getVersion: () => ipcRenderer.invoke('app:getVersion'),
+
   // Controles de ventana
   win: {
     control: (cmd) => ipcRenderer.invoke('win:control', cmd),
@@ -179,3 +182,14 @@ async function downloadFromDrive(fileId, destPath){
 
   return { done:true, size: fs.existsSync(destPath)? fs.statSync(destPath).size : 0, filename: info.filename || filenameFromHeaders(res) || 'archivo.bin' };
 }
+
+/* === AÑADIDO AL FINAL: expone un objeto NUEVO sin tocar 'launcher' === */
+try {
+  const { contextBridge, ipcRenderer } = require('electron');
+  contextBridge.exposeInMainWorld('clientInstaller', {
+    installClientDialog: () => ipcRenderer.invoke('instalar-cliente-con-dialogo'),
+    onInstallProgress: (cb) => ipcRenderer.on('instal-progreso', (_e, data) => cb && cb(data)),
+    onInstallLog:      (cb) => ipcRenderer.on('instal-log', (_e, msg) => cb && cb(msg)),
+  });
+} catch {}
+

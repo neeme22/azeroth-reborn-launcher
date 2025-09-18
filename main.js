@@ -196,3 +196,109 @@ ipcMain.handle('win:control', (e, cmd) => {
   }
   return true;
 });
+
+/* =======================================================================
+   AÑADIDO (PASO 2): Ventana para elegir carpeta, comprobar espacio
+   y lanzar instalación del cliente con borrado de particiones al final.
+   ======================================================================= */
+
+// Dependencias del paso 2 (no tocan lo existente)
+const checkDiskSpace = require('check-disk-space').default;
+const { getReleaseByTag } = require('./app/downloader/githubReleaseClient');
+const { installFromGithubRelease } = require('./app/downloader/installClient');
+
+const OWNER = 'neeme22';                  // <-- tu usuario de GitHub (repo de cliente)
+const CLIENT_REPO = 'game-client-dist';   // <-- repo donde publicas las releases del cliente
+const CLIENT_TAG  = 'v1.0.0';             // <-- versión de cliente a instalar
+const SEVEN_ZIP   = path.join(process.cwd(), 'resources', 'bin', '7za.exe');
+
+function bytesToGiB(n){ return (n / (1024**3)).toFixed(2); }
+
+// Handler IPC que puedes invocar desde tu UI (sin cambiar tu diseño)
+ipcMain.handle('instalar-cliente-con-dialogo', async (event) => {
+  // 1) Elegir carpeta de instalación (y usaremos ahí la descarga)
+  const win = BrowserWindow.getFocusedWindow();
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+    title: 'Elige carpeta de instalación',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  if (canceled || !filePaths || !filePaths[0]) return { canceled: true };
+
+  const installDir = filePaths[0];
+  const downloadDir = path.join(installDir, '_downloads', CLIENT_TAG); // misma unidad
+
+  // 2) Obtener tamaños de la release (para requisitos)
+  const release = await getReleaseByTag(OWNER, CLIENT_REPO, CLIENT_TAG, process.env.GITHUB_TOKEN || null);
+  const partAssets = (release.assets || []).filter(a => /\.7z\.\d{2,3}$/i.test(a.name));
+  if (!partAssets.length) {
+    await dialog.showMessageBox(win, { type: 'error', message: 'No hay partes *.7z.001 en la release.' });
+    return { error: 'no_parts' };
+  }
+
+  const totalDownloadBytes = partAssets.reduce((acc, a) => acc + (a.size || 0), 0);
+  const estimatedFinalBytes = totalDownloadBytes; // usamos -mx0, ~mismo tamaño
+  const marginBytes = 1 * 1024 ** 3; // 1 GiB de margen
+  const minRequiredBytes = totalDownloadBytes + estimatedFinalBytes + marginBytes;
+
+  // 3) Espacio libre de la unidad de installDir
+  const spaceInfo = await checkDiskSpace(installDir);
+  const freeBytes = spaceInfo.free;
+
+  // 4) Ventanita con requisitos y confirmación
+  const msg =
+    `Carpeta: ${installDir}\n` +
+    `Descarga: ${bytesToGiB(totalDownloadBytes)} GiB\n` +
+    `Instalado: ${bytesToGiB(estimatedFinalBytes)} GiB\n` +
+    `Margen: ${bytesToGiB(marginBytes)} GiB\n` +
+    `Mínimo requerido: ${bytesToGiB(minRequiredBytes)} GiB\n` +
+    `Libre en disco: ${bytesToGiB(freeBytes)} GiB\n\n` +
+    (freeBytes >= minRequiredBytes
+      ? 'Hay espacio suficiente. ¿Continuar?'
+      : 'No hay espacio suficiente. Elige otra carpeta o libera espacio.');
+
+  const buttons = freeBytes >= minRequiredBytes ? ['Continuar', 'Cancelar'] : ['Cambiar carpeta', 'Cancelar'];
+  const { response } = await dialog.showMessageBox(win, {
+    type: freeBytes >= minRequiredBytes ? 'info' : 'warning',
+    buttons,
+    defaultId: 0,
+    cancelId: 1,
+    message: 'Requisitos de espacio',
+    detail: msg,
+    noLink: true
+  });
+
+  if (freeBytes < minRequiredBytes) {
+    if (response === 0) {
+      // “Cambiar carpeta”: el renderer puede volver a invocar este IPC
+      return { notEnoughSpace: true };
+    }
+    return { canceled: true };
+  }
+  if (response !== 0) return { canceled: true };
+
+  // 5) Ejecutar instalación con borrado de particiones al final
+  try {
+    const res = await installFromGithubRelease({
+      owner: OWNER,
+      repo: CLIENT_REPO,
+      tag: CLIENT_TAG,
+      downloadDir,
+      installDir,
+      sevenZipExe: SEVEN_ZIP,
+      token: process.env.GITHUB_TOKEN || null,
+      cleanupParts: true,            // <-- BORRAR PARTES .7z.* y SHA al finalizar
+      skipIfVersionInstalled: true,  // <-- salta si ya está esa versión
+      onLog: (m) => win?.webContents.send('instal-log', m),
+      onProgress: ({ file, pct }) => win?.webContents.send('instal-progreso', { file, pct })
+    });
+    await dialog.showMessageBox(win, { type: 'info', message: 'Instalación completada', detail: `Carpeta: ${installDir}` });
+    return { ok: true, ...res, installDir };
+  } catch (e) {
+    await dialog.showMessageBox(win, { type: 'error', message: 'Error instalando cliente', detail: e.message });
+    return { error: e.message };
+  }
+});
+
+/* ======= AÑADIDO PARA LA VERSIÓN DEL LAUNCHER ======= */
+ipcMain.handle('app:getVersion', () => app.getVersion());
+

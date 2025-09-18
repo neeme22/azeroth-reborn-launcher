@@ -648,6 +648,60 @@ function waitFor(cond, timeoutMs){
     }, 50);
   });
 }
+
+/* === AÑADIDO AL FINAL: intercepta el botón "Descargar cliente" para usar el instalador con diálogo y progreso === */
+(() => {
+  const btn = document.getElementById('dlClient');
+  if (!btn || !window.clientInstaller) return;
+
+  // Captura antes que tu listener original, sin borrarlo
+  btn.addEventListener('click', async (ev) => {
+    try { ev.stopImmediatePropagation(); ev.preventDefault(); } catch {}
+
+    // Conectar listeners UNA sola vez
+    if (!window.__installListenersAttached) {
+      window.__installListenersAttached = true;
+
+      window.clientInstaller.onInstallProgress(({ file, pct }) => {
+        try {
+          const bar = document.getElementById('prog');
+          if (bar) bar.value = Math.max(0, Math.min(100, pct|0));
+          const status = document.getElementById('status');
+          if (status) status.textContent = `Descargando ${file}: ${pct|0}%`;
+        } catch {}
+      });
+
+      window.clientInstaller.onInstallLog((msg) => {
+        try {
+          const status = document.getElementById('status');
+        if (status) status.textContent = String(msg);
+        } catch {}
+        console.log('[CLIENTE]', msg);
+      });
+    }
+
+    // Lanza el flujo del PASO 2 (elige carpeta, verifica espacio, instala y BORRA particiones)
+    const res = await window.clientInstaller.installClientDialog();
+    console.log('Resultado instalación:', res);
+
+    // Mensaje final en tus elementos existentes
+    const status = document.getElementById('status');
+    if (status) {
+      if (res && res.ok) {
+        status.textContent = `Instalación completada en: ${res.installDir || 'carpeta seleccionada'}`;
+        const bar = document.getElementById('prog'); if (bar) bar.value = 100;
+      } else if (res && res.notEnoughSpace) {
+        status.textContent = 'No hay espacio suficiente. Prueba otra carpeta.';
+      } else if (res && res.canceled) {
+        status.textContent = 'Instalación cancelada.';
+      } else if (res && res.error) {
+        status.textContent = 'Error: ' + res.error;
+      } else {
+        status.textContent = 'Operación cancelada.';
+      }
+    }
+  }, true); // captura = true
+})();
 </script>
 </body>
 </html>
