@@ -1,6 +1,6 @@
 {
   "name": "azeroth-reborn-launcher",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Launcher de Azeroth Reborn",
   "main": "main.js",
   "author": "Azeroth Reborn",
@@ -49,7 +49,8 @@
     "asar": true,
     "win": {
       "target": "nsis",
-      "icon": "icon.ico"
+      "icon": "icon.ico",
+      "artifactName": "Azeroth-Reborn-Launcher-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
