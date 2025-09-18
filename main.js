@@ -4,6 +4,12 @@ const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
+// ===== Auto-update (añadido, no rompe nada) =====
+const { autoUpdater } = require('electron-updater');
+const log = require('electron-log');
+autoUpdater.logger = log;
+log.transports.file.level = 'info';
+
 let tray = null;
 let isQuitting = false;
 
@@ -59,15 +65,47 @@ function createWindow () {
     win.hide();
   });
 
-  // ⬇️ Al minimizar: YA NO se esconde a la bandeja; va a la barra de tareas.
-  //    Mantengo solo el mute (sin ocultar).
+  // Al minimizar: se queda en la barra de tareas; solo mutea
   win.on('minimize', (_e) => {
     try { win.webContents.setAudioMuted(true); } catch {}
-    // Nada de preventDefault ni hide(): así queda en la barra de tareas.
   });
 }
 
-app.whenReady().then(createWindow);
+// ===== Arranque + Updater =====
+app.whenReady().then(() => {
+  createWindow();
+
+  // Config y eventos del updater (no afecta a tu UI)
+  autoUpdater.on('checking-for-update', () => log.info('checking-for-update'));
+  autoUpdater.on('update-available', i => log.info('update-available', i && i.version));
+  autoUpdater.on('update-not-available', () => log.info('update-not-available'));
+  autoUpdater.on('error', e => log.error('autoUpdater error', e));
+  autoUpdater.on('download-progress', p => log.info(`down ${Math.round(p.percent)}%`));
+
+  autoUpdater.on('update-downloaded', async () => {
+    const win = BrowserWindow.getAllWindows()[0];
+    const res = await dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: ['Reiniciar ahora', 'Luego'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Actualización lista',
+      message: 'Hay una nueva versión del launcher. ¿Reiniciar para instalarla?'
+    });
+    if (res.response === 0) {
+      isQuitting = true;          // evita que el close lo mande a la bandeja
+      autoUpdater.quitAndInstall();
+    }
+  });
+
+  // Comprobar en el arranque y cada 30 minutos
+  autoUpdater.checkForUpdatesAndNotify();
+  setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 30 * 60 * 1000);
+});
+
+// 🔸 Clave: marcar salida real para que el handler de 'close' no oculte la ventana
+app.on('before-quit', () => { isQuitting = true; });
+
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 
 /* ---------- Config ---------- */
