@@ -140,6 +140,19 @@
   .music-ctl input[type="range"]::-webkit-slider-runnable-track{
     height:6px; border-radius:10px; background:linear-gradient(90deg,#4cb2f2,#2a77c8);
   }
+
+  /* ===== Distintivo de versión (movido a esquina inferior derecha) ===== */
+  .ver-badge{
+    position:fixed; right:16px; bottom:16px; z-index:22;
+    padding:6px 10px; font-size:12px; letter-spacing:.3px;
+    color:#cfe9ff;
+    background:rgba(15,23,36,.55);
+    border:1px solid rgba(39,64,99,.55);
+    border-radius:10px; backdrop-filter:blur(8px) saturate(140%);
+    box-shadow:0 10px 24px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.04);
+    -webkit-app-region: no-drag;
+    display:none; /* se mostrará por JS cuando obtengamos la versión */
+  }
 </style>
 </head>
 <body>
@@ -237,6 +250,9 @@
   </button>
   <input id="volRange" type="range" min="0" max="1" step="0.01" value="0.40" aria-label="Volumen"/>
 </div>
+
+<!-- 🔖 Distintivo de versión (se rellena por JS) -->
+<div class="ver-badge" id="verBadge" aria-label="Versión del launcher"></div>
 
 <script type="module">
 document.addEventListener('DOMContentLoaded', init);
@@ -408,7 +424,26 @@ async function init(){
   // Cualquier interacción con botones arranca la música si no arrancó
   document.body.addEventListener('click', bootMusic, { once:true });
 
-  // === (fin música) ===
+  // ===== Distintivo de versión (no toca nada más) =====
+  try {
+    const el = document.getElementById('verBadge');
+    let ver = null;
+    if (window.launcher) {
+      if (typeof window.launcher.getVersion === 'function') {
+        ver = await window.launcher.getVersion();
+      } else {
+        ver = window.launcher.appVersion || window.launcher.version || null;
+      }
+    }
+    if (ver) {
+      el.textContent = `v${String(ver)}`;
+      el.style.display = 'inline-block';
+    } else {
+      el.style.display = 'none';
+    }
+  } catch { /* si algo falla, se oculta */ }
+
+  // === (fin música + versión) ===
 
   try {
     $('#wowPath').value = cfg.wowPath || '';

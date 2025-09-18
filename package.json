@@ -1,6 +1,6 @@
 {
   "name": "azeroth-reborn-launcher",
-  "version": "1.0.6",
+  "version": "1.0.0",
   "description": "Launcher de Azeroth Reborn",
   "main": "main.js",
   "author": "Azeroth Reborn",
@@ -65,7 +65,8 @@
       {
         "provider": "github",
         "owner": "neeme22",
-        "repo": "azeroth-reborn-launcher"
+        "repo": "azeroth-reborn-launcher",
+        "releaseType": "release"
       }
     ]
   }
