@@ -12,8 +12,9 @@
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder",
-    "dist:pub": "electron-builder --publish always",
+    "dist": "electron-builder -w",
+    "publish": "electron-builder -w --publish always",
+    "build": "npm run dist",
     "make:ico": "node make-ico.js"
   },
   "devDependencies": {
@@ -34,14 +35,15 @@
       "output": "dist"
     },
     "files": [
-      "main.js",
-      "preload.js",
-      "index.html",
-      "assets/**/*",
-      "icon.ico",
-      "package.json"
+      "**/*",
+      "!dist/**",
+      "!node_modules/.cache/**"
     ],
     "extraResources": [
+      {
+        "from": "resources/bin",
+        "to": "bin"
+      },
       {
         "from": "assets",
         "to": "assets"

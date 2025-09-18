@@ -47,6 +47,7 @@ function createWindow () {
     if (win.isMinimized()) win.restore();
     win.show();
     try { win.webContents.setAudioMuted(false); } catch {}
+    try { win.focus(); } catch {}
   };
 
   const contextMenu = Menu.buildFromTemplate([
@@ -69,39 +70,61 @@ function createWindow () {
   win.on('minimize', (_e) => {
     try { win.webContents.setAudioMuted(true); } catch {}
   });
+
+  return win;
 }
 
-// ===== Arranque + Updater =====
-app.whenReady().then(() => {
-  createWindow();
+/* ================== SINGLE INSTANCE LOCK ================== */
+const gotTheLock = app.requestSingleInstanceLock();
 
-  // Config y eventos del updater (no afecta a tu UI)
-  autoUpdater.on('checking-for-update', () => log.info('checking-for-update'));
-  autoUpdater.on('update-available', i => log.info('update-available', i && i.version));
-  autoUpdater.on('update-not-available', () => log.info('update-not-available'));
-  autoUpdater.on('error', e => log.error('autoUpdater error', e));
-  autoUpdater.on('download-progress', p => log.info(`down ${Math.round(p.percent)}%`));
-
-  autoUpdater.on('update-downloaded', async () => {
+if (!gotTheLock) {
+  // Ya hay una instancia: salimos inmediatamente
+  app.quit();
+} else {
+  // Si el usuario intenta abrir otra instancia, enfocamos la actual
+  app.on('second-instance', (_event, _argv, _cwd) => {
     const win = BrowserWindow.getAllWindows()[0];
-    const res = await dialog.showMessageBox(win, {
-      type: 'question',
-      buttons: ['Reiniciar ahora', 'Luego'],
-      defaultId: 0,
-      cancelId: 1,
-      title: 'Actualización lista',
-      message: 'Hay una nueva versión del launcher. ¿Reiniciar para instalarla?'
-    });
-    if (res.response === 0) {
-      isQuitting = true;          // evita que el close lo mande a la bandeja
-      autoUpdater.quitAndInstall();
+    if (win) {
+      if (win.isMinimized()) win.restore();
+      win.show();
+      try { win.focus(); win.webContents.setAudioMuted(false); } catch {}
+    } else {
+      createWindow();
     }
   });
 
-  // Comprobar en el arranque y cada 30 minutos
-  autoUpdater.checkForUpdatesAndNotify();
-  setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 30 * 60 * 1000);
-});
+  // ===== Arranque + Updater =====
+  app.whenReady().then(() => {
+    createWindow();
+
+    // Config y eventos del updater (no afecta a tu UI)
+    autoUpdater.on('checking-for-update', () => log.info('checking-for-update'));
+    autoUpdater.on('update-available', i => log.info('update-available', i && i.version));
+    autoUpdater.on('update-not-available', () => log.info('update-not-available'));
+    autoUpdater.on('error', e => log.error('autoUpdater error', e));
+    autoUpdater.on('download-progress', p => log.info(`down ${Math.round(p.percent)}%`));
+
+    autoUpdater.on('update-downloaded', async () => {
+      const win = BrowserWindow.getAllWindows()[0];
+      const res = await dialog.showMessageBox(win, {
+        type: 'question',
+        buttons: ['Reiniciar ahora', 'Luego'],
+        defaultId: 0,
+        cancelId: 1,
+        title: 'Actualización lista',
+        message: 'Hay una nueva versión del launcher. ¿Reiniciar para instalarla?'
+      });
+      if (res.response === 0) {
+        isQuitting = true;          // evita que el close lo mande a la bandeja
+        autoUpdater.quitAndInstall();
+      }
+    });
+
+    // Comprobar en el arranque y cada 30 minutos
+    autoUpdater.checkForUpdatesAndNotify();
+    setInterval(() => autoUpdater.checkForUpdatesAndNotify(), 30 * 60 * 1000);
+  });
+}
 
 // 🔸 Clave: marcar salida real para que el handler de 'close' no oculte la ventana
 app.on('before-quit', () => { isQuitting = true; });
@@ -301,4 +324,3 @@ ipcMain.handle('instalar-cliente-con-dialogo', async (event) => {
 
 /* ======= AÑADIDO PARA LA VERSIÓN DEL LAUNCHER ======= */
 ipcMain.handle('app:getVersion', () => app.getVersion());
-
