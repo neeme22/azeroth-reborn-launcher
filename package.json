@@ -1,14 +1,19 @@
 {
   "name": "azeroth-reborn-launcher",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Launcher de Azeroth Reborn",
   "main": "main.js",
   "author": "Azeroth Reborn",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neeme22/azeroth-reborn-launcher.git"
+  },
   "scripts": {
     "start": "electron .",
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
+    "dist:pub": "electron-builder --publish always",
     "make:ico": "node make-ico.js"
   },
   "devDependencies": {
@@ -16,6 +21,10 @@
     "electron-builder": "^24.6.0",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.4"
+  },
+  "dependencies": {
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2"
   },
   "build": {
     "appId": "com.azerothreborn.launcher",
@@ -50,10 +59,13 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Azeroth Reborn Launcher"
-    }
-  },
-  "dependencies": {
-    "electron-log": "^5.4.3",
-    "electron-updater": "^6.6.2"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "neeme22",
+        "repo": "azeroth-reborn-launcher"
+      }
+    ]
   }
 }
