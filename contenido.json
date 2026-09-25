@@ -1,0 +1,19 @@
+{
+  "lema": "Azeroth te espera. Tu leyenda continúa.",
+  "chip": "Wrath of the Lich King · 3.3.5a",
+  "aviso": null,
+  "reino": { "host": "127.0.0.1", "puerto": 3724 },
+  "releases_cliente": "https://github.com/neeme22/game-client-dist/releases",
+  "enlaces": { "discord": "", "web": "" },
+  "fondos": ["kalimdor", "moltencore", "blackwinglair", "reinos", "ahnqiraj", "naxxramas", "zulgurub",
+             "blackrockspire", "scholomance", "deadmines", "shadowfang", "diremaul"],
+  "noticias": [
+    {
+      "titulo": "Bienvenido a Eternal Legacy",
+      "categoria": "Servidor",
+      "fecha": "2026-09-26",
+      "imagen": "reinos",
+      "resumen": "Estrenamos launcher. Desde aquí podrás instalar el juego, ver el estado del reino y enterarte de todas las novedades antes de entrar."
+    }
+  ]
+}
