@@ -2,12 +2,20 @@
   "lema": "Azeroth te espera. Tu leyenda continúa.",
   "chip": "Wrath of the Lich King · 3.3.5a",
   "aviso": null,
-  "reino": { "host": "", "puerto": 3724 },
+  "reino": { "host": "26.150.17.173", "puerto": 3724 },
+  "addons_retirados": [],
   "releases_cliente": "https://github.com/neeme22/game-client-dist/releases",
   "enlaces": { "discord": "", "web": "" },
   "fondos": ["kalimdor", "moltencore", "blackwinglair", "reinos", "ahnqiraj", "naxxramas", "zulgurub",
              "blackrockspire", "scholomance", "deadmines", "shadowfang", "diremaul"],
   "noticias": [
+    {
+      "titulo": "Transfiguraciones a tu gusto",
+      "categoria": "Parche",
+      "fecha": "2026-09-26",
+      "imagen": "kalimdor",
+      "resumen": "Al crear un personaje eliges si quieres ver las transfiguraciones de los demás jugadores. Puedes cambiarlo cuando quieras en Interfaz > AddOns > Eternal Legacy o con /transfig. Además la tienda se abre desde la selección de personajes y la barra de menú es más limpia."
+    },
     {
       "titulo": "Bienvenido a Eternal Legacy",
       "categoria": "Servidor",
